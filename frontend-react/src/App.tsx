@@ -1,11 +1,10 @@
-import Chat from "./components/Chat";
+import ChatBox from "./components/ChatBox";
 
 function App() {
   return (
-    <>
-      <div className="text-3xl">Real Time Chat</div>
-      <Chat />
-    </>
+    <div className="w-screen h-screen flex flex-col items-center justify-center">
+      <ChatBox />
+    </div>
   );
 }
 
