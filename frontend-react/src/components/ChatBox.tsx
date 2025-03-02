@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // interface Chats {
 //   message: string;
@@ -9,22 +9,26 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 type MessagePriority = "normal" | "medium" | "high";
 
+interface Message {
+  // chatId: string,
+  id: string;
+  roomId: string;
+  message: string;
+  name: string;
+  upvotes: number;
+  priority: MessagePriority;
+  timestamp: Date;
+}
 // interface Message {
-//   chatId: string;
-//   roomId: string;
-//   message: string;
+//   id: string;
+//   text: string;
 //   name: string;
+//   timestamp: Date;
 //   upvotes: number;
 //   priority: MessagePriority;
 // }
-interface Message {
-  id: string;
-  text: string;
-  name: string;
-  timestamp: Date;
-  upvotes: number;
-  priority: MessagePriority;
-}
+
+const randomUserId = Math.floor(Math.random() * 1000);
 
 const ChatBox = () => {
   // const [chats, setChats] = useState<Chats[]>([]);
@@ -50,6 +54,8 @@ const ChatBox = () => {
 
   // State for messages in all three columns
   const [messages, setMessages] = useState<Message[]>([]);
+  const [upvoteUpdate, setUpvoteUpdate] = useState<boolean>(false);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
 
   const normalMessagesEndRef = useRef<HTMLDivElement>(null);
   const mediumMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -59,48 +65,82 @@ const ChatBox = () => {
   const handleSendMessage = () => {
     if (messageInput.trim() === "") return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: messageInput,
-      name: "You", // In a real app, this would be the current user
-      timestamp: new Date(),
-      upvotes: 0,
-      priority: "normal",
-    };
+    if (!socket) {
+      return;
+    }
+    // const newMessage: Message = {
+    //   id: Date.now().toString(),
+    //   text: messageInput,
+    //   name: "You", // In a real app, this would be the current user
+    //   timestamp: new Date(),
+    //   upvotes: 0,
+    //   priority: "normal",
+    // };
 
-    setMessages([...messages, newMessage]);
+    // const newMessage: Message = {
+    //   id: Date.now().toString(),
+    //   roomId: "2",
+    //   message: messageInput,
+    //   name: "Prathamesh",
+    //   upvotes: 0,
+    //   priority: "normal",
+    // };
+
+    socket.send(
+      JSON.stringify({
+        type: "SEND_MESSAGE",
+        payload: {
+          userId: randomUserId,
+          roomId: "2",
+          message: messageInput,
+        },
+      })
+    );
+
+    // setMessages([...messages, newMessage]);
     setMessageInput("");
+    setUpvoteUpdate(false);
   };
 
   // Handle upvoting a message
   const handleUpvote = (messageId: string) => {
-    setMessages((prevMessages) =>
-      prevMessages.map((message) => {
-        if (message.id === messageId) {
-          const newUpvotes = message.upvotes + 1;
-          let newPriority: MessagePriority = message.priority;
+    console.log(messageId);
+    if (!socket) return;
+    setUpvoteUpdate(true);
 
-          // Update priority based on upvotes
-          if (newUpvotes >= 15) {
-            newPriority = "high";
-          } else if (newUpvotes >= 10) {
-            newPriority = "medium";
-          }
-
-          return { ...message, upvotes: newUpvotes, priority: newPriority };
-        }
-        return message;
+    socket.send(
+      JSON.stringify({
+        type: "UPVOTE_MESSAGE",
+        payload: {
+          userId: randomUserId,
+          roomId: "2",
+          chatId: messageId,
+        },
       })
     );
   };
 
   const scrollToBottom = (columnType: MessagePriority) => {
-    if (columnType === "normal" && normalMessagesEndRef.current) {
+    if (
+      columnType === "normal" &&
+      normalMessagesEndRef.current &&
+      !upvoteUpdate
+    ) {
       normalMessagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    } else if (columnType === "medium" && mediumMessagesEndRef.current) {
+    } else if (
+      columnType === "medium" &&
+      mediumMessagesEndRef.current &&
+      !upvoteUpdate
+    ) {
       mediumMessagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    } else if (columnType === "high" && highMessagesEndRef.current) {
+      setUpvoteUpdate(false);
+    } else if (
+      columnType === "high" &&
+      highMessagesEndRef.current &&
+      !upvoteUpdate
+    ) {
       highMessagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      setUpvoteUpdate(false);
     }
   };
 
@@ -122,15 +162,110 @@ const ChatBox = () => {
 
   useEffect(() => {
     scrollToBottom("normal");
-  }, [normalMessages]);
+  }, [normalMessages, upvoteUpdate]);
 
   useEffect(() => {
     scrollToBottom("medium");
-  }, [mediumPriorityMessages]);
+  }, [mediumPriorityMessages, upvoteUpdate]);
 
   useEffect(() => {
     scrollToBottom("high");
-  }, [highPriorityMessages]);
+  }, [highPriorityMessages, upvoteUpdate]);
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8080", "echo-protocol");
+    setSocket(ws);
+
+    ws.onopen = () => {
+      alert("Connected");
+      // ws.send('Hello from client side websocket');
+      ws.send(
+        JSON.stringify({
+          type: "JOIN_ROOM",
+          payload: {
+            name: "Prathamesh",
+            userId: randomUserId,
+            roomId: "2",
+          },
+        })
+      );
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const { payload, type } = JSON.parse(event.data);
+        console.log(payload);
+        if (type === "ADD_CHAT") {
+          const incomingMessage: Message = {
+            id: payload.chatId,
+            roomId: payload.roomId,
+            message: payload.message,
+            name: payload.name,
+            upvotes: 0,
+            priority: "normal",
+            timestamp: new Date(),
+          };
+
+          setMessages((prevMessages) => [...prevMessages, incomingMessage]);
+        } else if (type == "UPDATE_CHAT") {
+          // setMessages((prevMessages) =>
+          //   prevMessages.map((message) => {
+          //     if (message.id == payload.chatId) {
+          //       return {
+          //         ...message,
+          //         upvotes: payload.upvotes,
+          //       };
+          //     }
+          //     return message;
+          //   })
+          // );
+
+          setMessages((prevMessages) =>
+            prevMessages.map((message) => {
+              if (message.id === payload.chatId) {
+                const newUpvotes = message.upvotes + 1;
+                let newPriority: MessagePriority = message.priority;
+
+                // Update priority based on upvotes
+                if (newUpvotes >= 15) {
+                  newPriority = "high";
+                } else if (newUpvotes >= 10) {
+                  newPriority = "medium";
+                }
+
+                return {
+                  ...message,
+                  upvotes: newUpvotes,
+                  priority: newPriority,
+                };
+              }
+              return message;
+            })
+          );
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    ws.onerror = (error) => {
+      alert("Error");
+      console.log("Error: ", error);
+    };
+
+    ws.onclose = () => {
+      alert("Disconnected");
+    };
+
+    return () => {
+      ws.close();
+      setSocket(null);
+    };
+  }, []);
+
+  // useEffect(() => {
+  //   console.log(messages);
+  // }, [messages]);
 
   // useEffect(() => {
   //   console.log("Chats: ", chats);
@@ -176,7 +311,7 @@ const ChatBox = () => {
                   <span>{message.upvotes}</span>
                 </button>
               </div>
-              <p className="mt-1">{message.text}</p>
+              <p className="mt-1">{message.message}</p>
             </div>
           ))}
           <div ref={normalMessagesEndRef}></div>
@@ -226,7 +361,7 @@ const ChatBox = () => {
                   <span>{message.upvotes}</span>
                 </button>
               </div>
-              <p className="mt-1">{message.text}</p>
+              <p className="mt-1">{message.message}</p>
             </div>
           ))}
           <div ref={mediumMessagesEndRef}></div>
@@ -254,7 +389,7 @@ const ChatBox = () => {
                   <span>{message.upvotes}</span>
                 </div>
               </div>
-              <p className="mt-1">{message.text}</p>
+              <p className="mt-1">{message.message}</p>
             </div>
           ))}
           <div ref={highMessagesEndRef}></div>
