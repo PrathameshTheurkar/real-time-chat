@@ -1,92 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
-<body>
-
-    <h1>Real-Time Chat App</h1>
-
-    <input type="text" id="inputText" />
-    <button onclick='onPress()'>On press!</button>
-
-    <div id="chats"></div>
-
-    <script>
-        const ws = new WebSocket('ws://localhost:8080', 'echo-protocol');
-        const randomUserId = Math.floor(Math.random() * 1000);
-        ws.onopen = () => {
-            alert('Connected');
-            // ws.send('Hello from client side websocket');
-            ws.send(JSON.stringify({
-                type: 'JOIN_ROOM',
-                payload: {
-                    name: 'Prathamesh',
-                    userId: randomUserId,
-                    roomId: '2'
-                }
-            }));
-        }
-
-        ws.onmessage = (event) => {
-            try {
-                const { payload, type } = JSON.parse(event.data);
-
-                if (type === 'ADD_CHAT') {
-                    const textNode = document.createElement('p');
-                    textNode.innerText = payload.message;
-                    const upvoteNode = document.createElement('button');
-                    upvoteNode.innerText = `(${payload.upvotes})`;
-                    upvoteNode.setAttribute('onclick', `setUpvote(${payload.chatId})`);
-                    upvoteNode.setAttribute('id', `message-${payload.chatId}`);
-
-                    document.getElementById('chats').appendChild(textNode);
-                    document.getElementById('chats').appendChild(upvoteNode);
-                } else if ("UPDATE_CHAT") {
-                    const upvoteNode = document.getElementById(`message-${payload.chatId}`);
-                    upvoteNode.innerText = `(${payload.upvotes})`;
-                }
-            } catch (e) {
-                console.error(e)
-            }
-        }
-
-        const setUpvote = (chatId) => {
-            ws.send(JSON.stringify({
-                type: 'UPVOTE_MESSAGE',
-                payload: {
-                    userId: randomUserId,
-                    roomId: '2',
-                    chatId
-                }
-            }))
-        }
-
-        ws.onerror = (error) => {
-            alert('Error');
-            console.log('Error: ', error);
-        }
-
-        ws.onclose = () => {
-            alert('Disconnected');
-        }
-
-        const onPress = () => {
-            ws.send(JSON.stringify({
-                type: 'SEND_MESSAGE',
-                payload: {
-                    userId: randomUserId,
-                    roomId: '2',
-                    message: document.getElementById('inputText').value
-                }
-            }))
-        }
-
-    </script>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React + TS</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
