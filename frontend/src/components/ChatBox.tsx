@@ -5,6 +5,7 @@ type MessagePriority = "normal" | "medium" | "high";
 interface Message {
   id: string;
   roomId: string;
+  userId: string;
   message: string;
   name: string;
   upvotes: number;
@@ -20,6 +21,7 @@ const ChatBox = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [upvoteUpdate, setUpvoteUpdate] = useState<boolean>(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [userId, setUserId] = useState<string>("");
 
   const normalMessagesEndRef = useRef<HTMLDivElement>(null);
   const mediumMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,7 +38,7 @@ const ChatBox = () => {
       JSON.stringify({
         type: "SEND_MESSAGE",
         payload: {
-          userId: randomUserId,
+          userId: randomUserId.toString(),
           roomId: "2",
           message: messageInput,
         },
@@ -56,7 +58,7 @@ const ChatBox = () => {
       JSON.stringify({
         type: "UPVOTE_MESSAGE",
         payload: {
-          userId: randomUserId,
+          userId: randomUserId.toString(),
           roomId: "2",
           chatId: messageId,
         },
@@ -123,16 +125,19 @@ const ChatBox = () => {
 
     ws.onopen = () => {
       alert("Connected");
+      const userId = randomUserId.toString();
       ws.send(
         JSON.stringify({
           type: "JOIN_ROOM",
           payload: {
             name: "Prathamesh",
-            userId: randomUserId,
+            userId,
             roomId: "2",
           },
         })
       );
+
+      setUserId(userId);
     };
 
     ws.onmessage = (event) => {
@@ -143,6 +148,7 @@ const ChatBox = () => {
           const incomingMessage: Message = {
             id: payload.chatId,
             roomId: payload.roomId,
+            userId: payload.userId,
             message: payload.message,
             name: payload.name,
             upvotes: 0,
@@ -173,6 +179,8 @@ const ChatBox = () => {
               return message;
             })
           );
+        } else if (type == "JOIN_ROOM") {
+          // setCookie("userId", payload.userId);
         }
       } catch (e) {
         console.error(e);
@@ -204,7 +212,12 @@ const ChatBox = () => {
 
         <div className="flex-1 overflow-y-auto p-4">
           {normalMessages.map((message) => (
-            <div key={message.id} className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div
+              key={message.id}
+              className={`mb-4 p-3 ${
+                message.userId == userId ? "bg-gray-50" : "bg-red-50"
+              } rounded-lg`}
+            >
               <div className="flex justify-between items-start">
                 <div>
                   <span className="font-bold">{message.name}</span>

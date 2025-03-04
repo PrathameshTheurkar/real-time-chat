@@ -59,6 +59,18 @@ function messageHandler(ws: connection, message: IncomingMessage) {
     if(message.type === SupportedMessage.JoinRoom) {
         const payload = message.payload;
         userManager.addUser(payload.name, payload.roomId, payload.userId, ws);
+
+        const outgoingMessage: OutgoingMessage = {
+            type: OutgoingSupportedMessage.JoinRoom,
+            payload: {
+                name: payload.name,
+                userId: payload.userId,
+                roomId: payload.roomId,
+            }
+
+        }
+
+        userManager.broadcast(payload.roomId, payload.userId, outgoingMessage);
     }
 
     if(message.type === SupportedMessage.SendMessage) {
@@ -81,7 +93,8 @@ function messageHandler(ws: connection, message: IncomingMessage) {
                 roomId: payload.roomId,
                 message: payload.message,
                 name: user.name,
-                upvotes: 0
+                upvotes: 0,
+                userId: payload.userId
             } 
         }
         console.log('Outgoing Message: ', outgoingMessage) ;       

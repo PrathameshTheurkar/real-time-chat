@@ -1,4 +1,5 @@
 export enum SupportedMessage {
+    JoinRoom = "JOIN_ROOM",
     AddChat = "ADD_CHAT",
     UpdateChat = "UPDATE_CHAT",
 }
@@ -8,7 +9,8 @@ type MessagePayload = {
     roomId: string,
     message: string,
     name: string,
-    upvotes: number
+    upvotes: number,
+    userId: string
 }
 
 export type OutgoingMessage = {
@@ -16,5 +18,8 @@ export type OutgoingMessage = {
     payload: MessagePayload
 } | {
     type: SupportedMessage.UpdateChat,
+    payload: Partial<MessagePayload>
+} | {
+    type: SupportedMessage.JoinRoom,
     payload: Partial<MessagePayload>
 }
