@@ -1,0 +1,21 @@
+version: "1.0"
+services:
+  frontend:
+    build: ./frontend
+    container_name: frontend-container
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+  backend:
+    build: ./server
+    container_name: backend-container
+    volumes:
+      - ./server:/server
+      - /server/node_modules
+    ports:
+      - 8080:8080
